@@ -1,0 +1,50 @@
+
+#include <NewPing.h>
+//#include <LiquidCrystal_I2C.h>
+#include <IskakINO_LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(16, 2);
+const int pingPin = 8;
+
+  void setup (){
+
+ Serial.begin(9600);
+
+  lcd.backlight();
+  lcd.begin();
+
+  lcd.setCursor(0, 0);
+  lcd.print ("Tank Fill Level:");
+  }
+
+void loop () {
+   long duration;
+  long cm;
+
+  pinMode(pingPin, OUTPUT);
+
+  digitalWrite(pingPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(pingPin, HIGH);
+  delayMicroseconds(5);
+
+  digitalWrite(pingPin, LOW);
+
+  pinMode(pingPin, INPUT);
+
+  duration = pulseIn(pingPin, HIGH);
+
+  cm = duration / 29 / 2;
+
+  Serial.print(cm);
+  Serial.println(" cm");
+
+  lcd.setCursor(0, 1);
+  lcd.print(cm);
+  lcd.print("cm  ");
+
+  delay(100);
+}
+
+
