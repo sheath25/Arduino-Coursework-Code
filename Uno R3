@@ -1,49 +1,90 @@
 
-#include <NewPing.h>
-//#include <LiquidCrystal_I2C.h>
 #include <IskakINO_LiquidCrystal_I2C.h>
+#include <NewPing.h>
+#define TANK_HEIGHT 30
 
-LiquidCrystal_I2C lcd(16, 2);
-const int pingPin = 8;
-  void setup (){
+NewPing sonar(8, 8, 30); 
+LiquidCrystal_I2C lcd(16, 2); 
 
- Serial.begin(9600);
+void calibrate() {
+pinMode(13, OUTPUT);
+digitalWrite(13, HIGH);
+while (millis() < 10000){}
+}
 
-  lcd.backlight();
+void setup() {
+  // initialise serial communication:
+  Serial.begin(9600);
   lcd.begin();
+  lcd.print("calibration");
+calibrate();                                                                                                                                                                                                                         
+ lcd.setCursor(0, 0);
+ pinMode(13, OUTPUT);
+digitalWrite(13, LOW);
 
-  lcd.setCursor(0, 0);
-  lcd.print ("Tank Fill Level:");
-  }
+ pinMode(7, OUTPUT);
+pinMode(6, OUTPUT);
+pinMode(5, OUTPUT);
+}
 
-void loop () {
-   long duration;
-  long cm;
+void loop() {
+  
+ 
+ float distance = sonar.ping_cm(); 
 
-  pinMode(pingPin, OUTPUT);
+  // establish variables for duration of the ping, and the distance result in centimeters:
+  float level = (TANK_HEIGHT - distance) / TANK_HEIGHT * 100; 
 
-  digitalWrite(pingPin, LOW);
-  delayMicroseconds(2);
 
-  digitalWrite(pingPin, HIGH);
-  delayMicroseconds(5);
+// (looping different states) constantly checking the fill of the tank by printing high or low
+// HIGH level
+  if (level <= 35 && level >= 0) {
+    // set pin (?) true for RED LED
+   digitalWrite(7, HIGH);
+   digitalWrite(6, LOW);
+   digitalWrite(5, LOW);
 
-  digitalWrite(pingPin, LOW);
+     lcd.setCursor(0, 0);
+    lcd.print("   HIGH LEVEL      ");
 
-  pinMode(pingPin, INPUT);
-
-  duration = pulseIn(pingPin, HIGH);
-
-  cm = duration / 29 / 2;
-
-  Serial.print(cm);
-  Serial.println(" cm");
-
-  lcd.setCursor(0, 1);
-  lcd.print(cm);
-  lcd.print("cm  ");
+    Serial.print(level);
+    Serial.println("% - High Level");
 
   delay(100);
 }
+//Okay level
+else if (level <= 70 && level > 35) {
+  // set pin (?) true for ORANGE LED
+    digitalWrite(6, HIGH);
+    digitalWrite(7, LOW);
+    digitalWrite(5, LOW);
+
+    lcd.setCursor(0, 0);
+    lcd.print("   Level OK        ");
+  
+    Serial.print(level);
+    Serial.println("% - Level OK");
+
+  delay(100);
+}
+//LOW level
+  else if (level > 70 && level < 100) {
+  // set pin (?) true for GREEN LED
+  // set same pin or different pin true for ALARM
+  digitalWrite(5, HIGH);
+  digitalWrite(6, LOW);
+  digitalWrite(7, LOW);
+
+   lcd.setCursor(0, 0);
+    lcd.print("   LOW LEVEL       ");
+
+    Serial.print(level);
+    Serial.println("% - Low Level");
+
+  delay(100);
+  }
+}
+  
+
 
 
