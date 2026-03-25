@@ -16,29 +16,51 @@ void setup() {
   // initialise serial communication:
   Serial.begin(9600);
   lcd.begin();
-  lcd.print("calibration");
+  lcd.print("CALIBRATION");
+
 calibrate();                                                                                                                                                                                                                         
  lcd.setCursor(0, 0);
+ // BLUE LED is true when calibrating
  pinMode(13, OUTPUT);
 digitalWrite(13, LOW);
 
- pinMode(7, OUTPUT);
+pinMode(7, OUTPUT);
 pinMode(6, OUTPUT);
 pinMode(5, OUTPUT);
 }
 
 void loop() {
-  
- 
- float distance = sonar.ping_cm(); 
 
-  // establish variables for duration of the ping, and the distance result in centimeters:
-  float level = (TANK_HEIGHT - distance) / TANK_HEIGHT * 100; 
+  float total = 0;
+
+for (int i = 0; i < 3; i++) {
+  total += sonar.ping_cm();
+  delay(10);
+}
+
+float distance = total / 3;
+
+if (distance == 0) return;
+
+}
+digitalWrite(5, LOW);
+digitalWrite(6, LOW);
+digitalWrite(7, LOW);
+
+// For smoother readings from the sensor
+float distance = sonar.ping_cm();
+delay(50);
+float distance2 = sonar.ping_cm();
+
+distance = (distance + distance2) / 2;
+
+  // establish variables for duration of the ping, and the distance result in percentages:
+  float level = ( distance) / TANK_HEIGHT * 100; 
 
 
 // (looping different states) constantly checking the fill of the tank by printing high or low
-// HIGH level
-  if (level <= 35 && level >= 0) {
+// HIGH level 70-100%
+  if (level <= 35 && level > 2) {
     // set pin (?) true for RED LED
    digitalWrite(7, HIGH);
    digitalWrite(6, LOW);
@@ -52,7 +74,7 @@ void loop() {
 
   delay(100);
 }
-//Okay level
+//Okay level 35-70%
 else if (level <= 70 && level > 35) {
   // set pin (?) true for ORANGE LED
     digitalWrite(6, HIGH);
@@ -67,7 +89,7 @@ else if (level <= 70 && level > 35) {
 
   delay(100);
 }
-//LOW level
+//LOW level 0-35%
   else if (level > 70 && level < 100) {
   // set pin (?) true for GREEN LED
   // set same pin or different pin true for ALARM
@@ -83,8 +105,15 @@ else if (level <= 70 && level > 35) {
 
   delay(100);
   }
-}
+  else if (level < 2) {
+  Serial.print(level);
+  Serial.println(" % - NO READING");
   
+  lcd.setCursor(0, 0);
+  lcd.print("   NO READING   ");
 
-
-
+digitalWrite(5, LOW);
+digitalWrite(6, LOW);
+digitalWrite(7, LOW);
+  }
+  
