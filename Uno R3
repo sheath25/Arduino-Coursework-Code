@@ -30,7 +30,6 @@ pinMode(5, OUTPUT);
 void loop() { 
  
  float distance = sonar.ping_cm(); 
-
   // establish variables for duration of the ping, and the distance result in centimeters:
   float level = (TANK_HEIGHT - distance) / TANK_HEIGHT * 100; 
 
@@ -38,15 +37,13 @@ void loop() {
 // (looping different states) constantly checking the fill of the tank by printing high or low
 // HIGH level
   if (level > 70 && level < 100) {
-    // set pin (?) true for RED LED
+    // set pin (7) true for RED LED in series with the alarm
   digitalWrite(7, HIGH);
   digitalWrite(6, LOW);
   digitalWrite(5, LOW);
 
   lcd.setCursor(0, 0);
   lcd.print("   HIGH LEVEL      ");
-  lcd.setCursor(0, 1);
-  lcd.print(" TURN PUMP ON    ");
   Serial.print(level);
   Serial.println("% - High Level");
 
@@ -54,30 +51,31 @@ void loop() {
 }
 //Okay level
 else if (level <= 70 && level > 35) {
-  // set pin (?) true for ORANGE LED
+  // set pin (6) true for ORANGE LED
   digitalWrite(6, HIGH);
   digitalWrite(7, LOW);
   digitalWrite(5, LOW);
 
   lcd.setCursor(0, 0);
-  lcd.print("   Level OK        ");
+  lcd.print("   PUMP START        ");
   lcd.setCursor(0, 1);
   lcd.print("             ");
   Serial.print(level);
-  Serial.println("% - Level OK");
+  Serial.println("% - Pump Start");
 
   delay(100);
 }
 //LOW level
   else if (level <= 35 && level >= 0) {
-  // set pin (?) true for GREEN LED
-  // set same pin or different pin true for ALARM
+  // set pin (5) true for GREEN LED
   digitalWrite(5, HIGH);
   digitalWrite(6, LOW);
   digitalWrite(7, LOW);
 
-   lcd.setCursor(0, 0);
-    lcd.print("   LOW LEVEL       ");
+  lcd.setCursor(0, 0);
+  lcd.print("   LOW LEVEL       ");
+  lcd.setCursor(0, 1);
+  lcd.print("             ");
 
     Serial.print(level);
     Serial.println("% - Low Level");
