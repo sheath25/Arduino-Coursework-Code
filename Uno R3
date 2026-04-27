@@ -1,15 +1,15 @@
 #include <IskakINO_LiquidCrystal_I2C.h>
 #include <NewPing.h>
 
-#define TANK_HEIGHT  10// in centimeters
+#define TANK_HEIGHT  30// in centimeters
 
 const int buttonPin = 2;
 const int pumpPin = 3;
 
-bool pumpState = false; // pump on/off from button
-bool autoPump = false;  // pump on automatically
-bool countdownStarted = false; // track if 15s timer started
-unsigned long countdownStartTime = 0; // time when level > 35 first detected
+unsigned long countdownStartTime = 0;
+bool countdownStarted = false;
+bool pumpManual = false;
+bool pumpAuto = false;
 
 int buttonState = digitalRead(buttonPin);
 int lastButtonState = LOW;
@@ -17,8 +17,8 @@ int lastButtonState = LOW;
 NewPing sonar(8, 8, 30);
 LiquidCrystal_I2C lcd(16, 2);
 
+// UNIT TEST HARNESS
 
-// UNIT TEST 
 struct TestCase {
   float distanceCm;
   const char* expectedState;
@@ -173,18 +173,15 @@ void setup() {
   pinMode(3, OUTPUT); // PUMP 
   digitalWrite(3, LOW); // PUMP OFF
 
-  pinMode(6, OUTPUT); // GREEN LED
-  pinMode(5, OUTPUT); // YELLOW LED
+  pinMode(5, OUTPUT); // GREEN LED
+  pinMode(6, OUTPUT); // YELLOW LED
   pinMode(7, OUTPUT); // RED LED AND ALARM
   
   pinMode(13, OUTPUT); // BLUE LED
   digitalWrite(13, LOW);
 }
 
-// ============================================================
-// MAIN LOOP
-// ============================================================
-
+// LOOP
 void loop() {
   float distance = sonar.ping_cm();
 
@@ -238,60 +235,57 @@ void loop() {
     delay(100);
   }
   // if readings are taken outside of 0-100% boundaries
-else if (level < 0 || level > 100) {
+else if (level < 0 || level >= 100) {
     lcd.setCursor(0, 0);
     lcd.print("   OUT OF RANGE       ");
     lcd.setCursor(0, 1);
     lcd.print("             ");
+
+    countdownStarted = false;
+    pumpAuto = false;
+    pumpManual = false;
 
     Serial.print(level);
     Serial.println(" Faulty Reading/ Out Of Range");
     delay(100);
 }
 
-// update if the button has been pressed or not
 buttonState = digitalRead(buttonPin);
 
-// if push button pressed, turn pump on until level reaches < 35 OR is pressed again
-if (buttonState == HIGH && lastButtonState == LOW) {
-  pumpState = !pumpState;  // toggle pump
-  autoPump = false;        // cancel AUTO if button pressed
+// Manual toggle
+if (buttonState == HIGH && lastButtonState == LOW && level > 35) {
+ pumpManual = !pumpManual;
+ pumpAuto = false; // cancel auto if manual pressed
 }
 lastButtonState = buttonState;
 
- // if level reaches > 35 and push button is not pressed within 15 seconds, set pump on until level < 35
-if (level > 35 && !pumpState) { 
-// Only start countdown if pump is not in MANUAL with the button
-  if (!countdownStarted) {
-   countdownStarted = true;
-   countdownStartTime = millis(); // start 15s timer
-  } else if (millis() - countdownStartTime >= 15000 && buttonState == LOW) {
-// after 15 secs, the button not been pressed, start in AUTO
-  countdownStarted = false; // reset countdown
-    }
-} else {
-// Reset countdown if level drops or pump manually turned on
-  countdownStarted = false;
-}
-
-// if pump is on in MANUAL or AUTO
-if (pumpState || autoPump) {
-    digitalWrite(pumpPin, HIGH); // pump ON
-} else {
-    digitalWrite(pumpPin, LOW);  // pump OFF
-}
-
-// Always stop pump if tank level < 35
-if (level <= 35) {
-    pumpState = false;
-    autoPump = false;
-    digitalWrite(pumpPin, LOW);
-}
-
-// Start pump if tank level > 35
+// Auto logic: level > 35 triggers 10s countdown
 if (level > 35) {
-    pumpState = true;
-    autoPump = true;
-    digitalWrite(pumpPin, HIGH);
+  if (!countdownStarted) {
+    countdownStarted = true;
+    countdownStartTime = millis();
 }
+else if (millis() - countdownStartTime >= 10000 && !pumpManual) {
+  pumpAuto = true;
+} 
+} else {
+// reset if level drops <= 35
+ countdownStarted = false;
+ pumpAuto = false;
+ pumpManual = false;
+}
+// Pump ON if manual or auto
+  if (pumpManual || pumpAuto) {
+   digitalWrite(pumpPin, HIGH);
+} else {
+  digitalWrite(pumpPin, LOW);
+}
+Serial.print("Level: "); Serial.println(level);
+delay(500);
+Serial.print("Pump Manual: "); Serial.println(pumpManual);
+delay(500);
+Serial.print("Pump Auto: "); Serial.println(pumpAuto);
+delay(500);
+Serial.print("Countdown started: "); Serial.println(countdownStarted);
+delay(500);
 }
