@@ -241,6 +241,10 @@ else if (level < 0 || level >= 100) {
     lcd.setCursor(0, 1);
     lcd.print("             ");
 
+    digitalWrite(5, LOW);
+    digitalWrite(6, LOW);
+    digitalWrite(7, LOW);
+    
     countdownStarted = false;
     pumpAuto = false;
     pumpManual = false;
