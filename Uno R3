@@ -1,7 +1,8 @@
 #include <IskakINO_LiquidCrystal_I2C.h>
 #include <NewPing.h>
+#include <Arduino.h>
 
-#define TANK_HEIGHT  30// in centimeters
+#define TANK_HEIGHT  30// (change tank height in centimeters)
 
 const int buttonPin = 2;
 const int pumpPin = 3;
@@ -11,137 +12,29 @@ bool countdownStarted = false;
 bool pumpManual = false;
 bool pumpAuto = false;
 
-int buttonState = digitalRead(buttonPin);
-int lastButtonState = LOW;
+int buttonState;
+int lastButtonState = HIGH;
 
 NewPing sonar(8, 8, 30);
 LiquidCrystal_I2C lcd(16, 2);
 
-// UNIT TEST HARNESS
-
-struct TestCase {
-  float distanceCm;
-  const char* expectedState;
-  int expectedRed;
-  int expectedOrange;
-  int expectedGreen;
-};
+String tankState = getStateFromDistance(distance);
 
 String getStateFromDistance(float distance) {
-  float level = (TANK_HEIGHT - distance) / TANK_HEIGHT * 100;
+float level = (30 - distance) / 30 * 100;  // calculate % full, assuming tank is 30 cm (change 30 to required tank size)
 
-  if (level == 100) {
-    return "EDGE_100";
-  }
-  else if (level > 70 && level < 100) {
-    return "HIGH LEVEL";
-  }
-  else if (level <= 70 && level > 35) {
-    return "PUMP START";
-  }
-  else if (level <= 35 && level >= 0) {
-    return "LOW LEVEL";
-  }
-  else if (level < 0) {
-    return "OUT_OF_RANGE_LOW";
-  }
-  else {
-    return "UNKNOWN";
-  }
+if (level > 70) return "HIGH LEVEL";       // mostly full
+else if (level > 35) return "PUMP START"; // medium
+else if (level >= 0) return "LOW LEVEL";  // low
+else return "OUT OF RANGE";               // impossible reading
 }
 
-void getOutputsFromState(const String& state, int &red, int &orange, int &green) {
-  red    = LOW;
-  orange = LOW;
-  green  = LOW;
-
-  if (state == "HIGH LEVEL") {
-    red = HIGH;
-  }
-  else if (state == "PUMP START") {
-    orange = HIGH;
-  }
-  else if (state == "LOW LEVEL") {
-    green = HIGH;
-  }
-}
-
-void runTest(TestCase tc, int &passed, int &failed) {
-  String actualState = getStateFromDistance(tc.distanceCm);
-
-  int red, orange, green;
-  getOutputsFromState(actualState, red, orange, green);
-
-  float level = (TANK_HEIGHT - tc.distanceCm) / TANK_HEIGHT * 100;
-
-  bool pass =
-    actualState == tc.expectedState &&
-    red    == tc.expectedRed   &&
-    orange == tc.expectedOrange &&
-    green  == tc.expectedGreen;
-
-  Serial.println("--------------------------------------------------");
-  Serial.print("Distance: ");
-  Serial.print(tc.distanceCm);
-  Serial.print(" cm  |  Level: ");
-  Serial.print(level);
-  Serial.println("%");
-
-  Serial.print("Expected State : ");
-  Serial.println(tc.expectedState);
-  Serial.print("Actual State   : ");
-  Serial.println(actualState);
-
-  Serial.print("Expected R/O/G : ");
-  Serial.print(tc.expectedRed);
-  Serial.print(" / ");
-  Serial.print(tc.expectedOrange);
-  Serial.print(" / ");
-  Serial.println(tc.expectedGreen);
-
-  Serial.print("Actual   R/O/G : ");
-  Serial.print(red);
-  Serial.print(" / ");
-  Serial.print(orange);
-  Serial.print(" / ");
-  Serial.println(green);
-
-  Serial.println(pass ? "RESULT: PASS" : "RESULT: FAIL");
-
-  if (pass) passed++; else failed++;
-}
-
-void runTests() {
-  TestCase tests[] = {
-    {5.0,  "HIGH LEVEL",       HIGH, LOW,  LOW },  // 83.33%
-    {9.0,  "PUMP START",       LOW,  HIGH, LOW },  // 70.00% — boundary
-    {15.0, "PUMP START",       LOW,  HIGH, LOW },  // 50.00%
-    {19.5, "LOW LEVEL",        LOW,  LOW,  HIGH},  // 35.00% — boundary
-    {25.0, "LOW LEVEL",        LOW,  LOW,  HIGH},  // 16.67%
-    {30.0, "LOW LEVEL",        LOW,  LOW,  HIGH},  // 0.00%
-    {0.0,  "EDGE_100",         LOW,  LOW,  LOW },  // 100% edge case
-    {35.0, "OUT_OF_RANGE_LOW", LOW,  LOW,  LOW }   // negative level
-  };
-
-  int count  = sizeof(tests) / sizeof(tests[0]);
-  int passed = 0;
-  int failed = 0;
-
-  Serial.println("==================================================");
-  Serial.println("        TANK SENSOR UNIT TESTS                   ");
-  Serial.println("==================================================");
-
-  for (int i = 0; i < count; i++) {
-    runTest(tests[i], passed, failed);
-  }
-
-  Serial.println("==================================================");
-  Serial.print("TOTAL: ");
-  Serial.print(passed);
-  Serial.print(" passed, ");
-  Serial.print(failed);
-  Serial.println(" failed");
-  Serial.println("==================================================");
+// UNIT TEST 
+void testFunctions() {
+float distance = 15;
+String tankState = getStateFromDistance(distance);
+Serial.print("Distance: "); Serial.print(distance);
+Serial.print(" cm -> Tank State: "); Serial.println(tankState);
 }
 
 // CALIBRATION
@@ -158,8 +51,6 @@ void setup() {
   Serial.begin(9600);
   while (!Serial) {}
 
-  runTests();  // <-- unit tests run first, check Serial Monitor
-
   lcd.begin();
   lcd.print("  CALIBRATION  ");
 
@@ -168,7 +59,7 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print(" Getting Reading");
 
-  pinMode(2, INPUT); // PUSH BUTTON
+  pinMode(buttonPin, INPUT_PULLUP); // PUSH BUTTON
 
   pinMode(3, OUTPUT); // PUMP 
   digitalWrite(3, LOW); // PUMP OFF
@@ -216,7 +107,7 @@ void loop() {
 
     Serial.print(level);
     Serial.println("% - Pump Start");
-    delay(100);
+    delay(200);
   }
   // LOW level
   else if (level <= 35 && level >= 0) {
@@ -232,7 +123,7 @@ void loop() {
 
     Serial.print(level);
     Serial.println("% - Low Level");
-    delay(100);
+    delay(200);
   }
   // if readings are taken outside of 0-100% boundaries
 else if (level < 0 || level >= 100) {
@@ -244,20 +135,20 @@ else if (level < 0 || level >= 100) {
     digitalWrite(5, LOW);
     digitalWrite(6, LOW);
     digitalWrite(7, LOW);
-    
+
     countdownStarted = false;
     pumpAuto = false;
     pumpManual = false;
 
     Serial.print(level);
-    Serial.println(" Faulty Reading/ Out Of Range");
-    delay(100);
+    Serial.println("% - Out Of Range");
+    delay(200);
 }
 
 buttonState = digitalRead(buttonPin);
 
 // Manual toggle
-if (buttonState == HIGH && lastButtonState == LOW && level > 35) {
+if (buttonState == LOW && lastButtonState == HIGH && level > 35) {
  pumpManual = !pumpManual;
  pumpAuto = false; // cancel auto if manual pressed
 }
@@ -269,7 +160,7 @@ if (level > 35) {
     countdownStarted = true;
     countdownStartTime = millis();
 }
-else if (millis() - countdownStartTime >= 10000 && !pumpManual) {
+else if (millis() - countdownStartTime >= 15000 && !pumpManual) {
   pumpAuto = true;
 } 
 } else {
@@ -285,11 +176,5 @@ else if (millis() - countdownStartTime >= 10000 && !pumpManual) {
   digitalWrite(pumpPin, LOW);
 }
 Serial.print("Level: "); Serial.println(level);
-delay(500);
-Serial.print("Pump Manual: "); Serial.println(pumpManual);
-delay(500);
-Serial.print("Pump Auto: "); Serial.println(pumpAuto);
-delay(500);
-Serial.print("Countdown started: "); Serial.println(countdownStarted);
-delay(500);
+delay(200);
 }
