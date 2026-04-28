@@ -4,6 +4,7 @@
 
 #define TANK_HEIGHT  30// (change tank height in centimeters)
 
+float distance;
 const int buttonPin = 2;
 const int pumpPin = 3;
 
@@ -18,10 +19,8 @@ int lastButtonState = HIGH;
 NewPing sonar(8, 8, 30);
 LiquidCrystal_I2C lcd(16, 2);
 
-String tankState = getStateFromDistance(distance);
-
 String getStateFromDistance(float distance) {
-float level = (30 - distance) / 30 * 100;  // calculate % full, assuming tank is 30 cm (change 30 to required tank size)
+float level = (TANK_HEIGHT - distance) / TANK_HEIGHT * 100;  // calculate % full, assuming tank is 30 cm (change 30 to required tank size)
 
 if (level > 70) return "HIGH LEVEL";       // mostly full
 else if (level > 35) return "PUMP START"; // medium
@@ -29,16 +28,20 @@ else if (level >= 0) return "LOW LEVEL";  // low
 else return "OUT OF RANGE";               // impossible reading
 }
 
-// UNIT TEST 
+// Unit Testing
 void testFunctions() {
-float distance = 15;
-String tankState = getStateFromDistance(distance);
-Serial.print("Distance: "); Serial.print(distance);
-Serial.print(" cm -> Tank State: "); Serial.println(tankState);
+float testDistances[] = {5, 15, 25, 35, 40};
+for (int i = 0; i < 5; i++) {
+  float distance = testDistances[i];
+  String tankState = getStateFromDistance(distance);
+  float level = (TANK_HEIGHT - distance) / TANK_HEIGHT * 100;
+  Serial.print("                     Distance: "); Serial.print(distance);
+  Serial.print(" cm, Level: "); Serial.print(level);
+  Serial.print("%, State: "); Serial.println(tankState);
+}
 }
 
 // CALIBRATION
-
 void calibrate() {
   pinMode(13, OUTPUT);
   digitalWrite(13, HIGH);
@@ -46,10 +49,11 @@ void calibrate() {
 }
 
 // SETUP
-
 void setup() {
   Serial.begin(9600);
   while (!Serial) {}
+
+ testFunctions();
 
   lcd.begin();
   lcd.print("  CALIBRATION  ");
@@ -62,7 +66,7 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP); // PUSH BUTTON
 
   pinMode(3, OUTPUT); // PUMP 
-  digitalWrite(3, LOW); // PUMP OFF
+  digitalWrite(3, HIGH); // PUMP OFF
 
   pinMode(5, OUTPUT); // GREEN LED
   pinMode(6, OUTPUT); // YELLOW LED
@@ -160,7 +164,7 @@ if (level > 35) {
     countdownStarted = true;
     countdownStartTime = millis();
 }
-else if (millis() - countdownStartTime >= 15000 && !pumpManual) {
+else if (millis() - countdownStartTime >= 5000 && !pumpManual) {
   pumpAuto = true;
 } 
 } else {
@@ -171,10 +175,14 @@ else if (millis() - countdownStartTime >= 15000 && !pumpManual) {
 }
 // Pump ON if manual or auto
   if (pumpManual || pumpAuto) {
-   digitalWrite(pumpPin, HIGH);
+   digitalWrite(pumpPin, LOW);
+   Serial.print("        Pump Manual:  "); 
+   delay(200);
 } else {
-  digitalWrite(pumpPin, LOW);
+  digitalWrite(pumpPin, HIGH);
+  Serial.print("  Pump Auto:  "); 
+  delay(200);
 }
-Serial.print("Level: "); Serial.println(level);
+Serial.print("    Level: "); Serial.println(level);
 delay(200);
 }
